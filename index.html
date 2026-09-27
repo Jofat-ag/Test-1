@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0f172a">
+<title>StudyNote — Educational Notebook</title>
+<link rel="manifest" href="manifest.webmanifest">
+<style>
+:root{--bg:#f6f8fc;--card:#fff;--text:#172033;--muted:#687386;--line:#e7eaf0;--accent:#4f46e5;--accent2:#eef2ff;--danger:#dc2626}
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:var(--bg);color:var(--text)}
+button,input,textarea{font:inherit}button{cursor:pointer}
+.app{display:grid;grid-template-columns:250px 1fr;min-height:100vh}.side{background:#0f172a;color:#fff;padding:22px 16px;display:flex;flex-direction:column}.brand{font-size:22px;font-weight:800;margin:0 8px 25px}.nav button{width:100%;border:0;background:transparent;color:#cbd5e1;text-align:left;padding:12px 14px;border-radius:10px;margin:3px 0}.nav button.active,.nav button:hover{background:#1e293b;color:#fff}.side small{margin-top:auto;color:#94a3b8;padding:8px}
+main{padding:28px;max-width:1200px;width:100%;margin:auto}.top{display:flex;justify-content:space-between;align-items:center;gap:15px;margin-bottom:24px}.top h1{margin:0;font-size:30px}.primary{border:0;background:var(--accent);color:#fff;padding:11px 16px;border-radius:10px;font-weight:700}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:0 4px 18px #1720330a}.stat strong{font-size:28px;display:block}.muted{color:var(--muted)}.section{margin-top:24px}.section h2{font-size:19px}.notes{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}.note{position:relative}.note h3{margin:0 0 8px}.note p{white-space:pre-wrap;line-height:1.55;color:#495468}.note .actions{display:flex;gap:8px;margin-top:12px}.ghost{border:1px solid var(--line);background:#fff;padding:8px 11px;border-radius:8px}.danger{color:var(--danger)}.empty{text-align:center;padding:45px;color:var(--muted)}
+input,textarea{width:100%;border:1px solid #d9dee8;border-radius:10px;padding:11px;background:#fff}textarea{min-height:190px;resize:vertical}.field{margin:14px 0}.field label{display:block;font-weight:700;margin-bottom:7px}.search{max-width:420px}.hidden{display:none}.modal{position:fixed;inset:0;background:#0f172a99;display:grid;place-items:center;padding:20px;z-index:5}.modalbox{background:#fff;border-radius:18px;padding:22px;width:min(650px,100%);max-height:90vh;overflow:auto}.modalhead{display:flex;justify-content:space-between;align-items:center}.close{border:0;background:#f1f5f9;border-radius:50%;width:34px;height:34px}.toast{position:fixed;bottom:20px;right:20px;background:#111827;color:#fff;padding:12px 16px;border-radius:10px;z-index:10}
+@media(max-width:800px){.app{grid-template-columns:1fr}.side{position:sticky;top:0;z-index:3;padding:12px;flex-direction:row;align-items:center}.brand{margin:0 10px 0 0}.nav{display:flex;overflow:auto;gap:4px}.nav button{white-space:nowrap;width:auto}.side small{display:none}main{padding:18px}.grid,.notes{grid-template-columns:1fr}.top{align-items:flex-start;flex-direction:column}}
+</style>
+</head>
+<body>
+<div class="app">
+<aside class="side"><div class="brand">📚 StudyNote</div><nav class="nav">
+<button class="active" data-view="dashboard">Dashboard</button><button data-view="notes">My Notes</button><button data-view="subjects">Subjects</button>
+</nav><small>Offline-ready notebook</small></aside>
+<main id="main"></main>
+</div>
+<div id="modal" class="modal hidden"></div><div id="toast" class="toast hidden"></div>
+<script>
+const KEY='studynote-v1';
+let state=JSON.parse(localStorage.getItem(KEY)||'null')||{notes:[
+{id:1,title:'Welcome Note',subject:'General',body:'This is your educational notebook. Create notes, organize them by subject, and keep your study material in one place.',created:Date.now()}
+]};
+const save=()=>localStorage.setItem(KEY,JSON.stringify(state));
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const toast=m=>{const e=document.getElementById('toast');e.textContent=m;e.classList.remove('hidden');setTimeout(()=>e.classList.add('hidden'),1800)};
+function render(view='dashboard'){
+document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.view===view));
+const main=document.getElementById('main');
+if(view==='dashboard') main.innerHTML=dashboard();
+if(view==='notes') main.innerHTML=notesPage();
+if(view==='subjects') main.innerHTML=subjectsPage();
+}
+function dashboard(){return '<div class="top"><div><h1>Good study session 👋</h1><p class="muted">Your personal educational notebook.</p></div><button class="primary" onclick="openEditor()">+ New note</button></div>'+
+'<div class="grid"><div class="card stat"><span class="muted">Total notes</span><strong>'+state.notes.length+'</strong></div><div class="card stat"><span class="muted">Subjects</span><strong>'+subjects().length+'</strong></div><div class="card stat"><span class="muted">Storage</span><strong>Local</strong></div></div>'+
+'<div class="section"><h2>Recent notes</h2><div class="notes">'+state.notes.slice().sort((a,b)=>b.created-a.created).slice(0,4).map(noteCard).join('')+'</div></div>'}
+function notesPage(){return '<div class="top"><div><h1>My Notes</h1><p class="muted">Write and manage your study notes.</p></div><button class="primary" onclick="openEditor()">+ New note</button></div><input class="search" id="search" placeholder="Search notes..." oninput="filterNotes()"><div class="section"><div id="noteList" class="notes">'+state.notes.slice().sort((a,b)=>b.created-a.created).map(noteCard).join('')+'</div></div>'}
+function subjectsPage(){let s=subjects();return '<div class="top"><div><h1>Subjects</h1><p class="muted">Browse notes by subject.</p></div></div><div class="grid">'+s.map(x=>'<div class="card"><h3>'+esc(x)+'</h3><p class="muted">'+state.notes.filter(n=>n.subject===x).length+' notes</p><button class="ghost" onclick="showSubject(\''+esc(x).replace(/'/g,"\\'")+'\')">Open</button></div>').join('')+'</div>'}
+function subjects(){return [...new Set(state.notes.map(n=>n.subject||'General'))]}
+function noteCard(n){return '<article class="card note"><h3>'+esc(n.title)+'</h3><div class="muted">'+esc(n.subject||'General')+'</div><p>'+esc(n.body.slice(0,220))+(n.body.length>220?'…':'')+'</p><div class="actions"><button class="ghost" onclick="openEditor('+n.id+')">Edit</button><button class="ghost danger" onclick="removeNote('+n.id+')">Delete</button></div></article>'}
+function openEditor(id){let n=state.notes.find(x=>x.id===id)||{title:'',subject:'General',body:''};document.getElementById('modal').innerHTML='<div class="modalbox"><div class="modalhead"><h2>'+(id?'Edit note':'New note')+'</h2><button class="close" onclick="closeModal()">×</button></div><div class="field"><label>Title</label><input id="nt" value="'+esc(n.title)+'" placeholder="e.g. Physics Chapter 1"></div><div class="field"><label>Subject</label><input id="ns" value="'+esc(n.subject||'General')+'" placeholder="e.g. Mathematics"></div><div class="field"><label>Note</label><textarea id="nb" placeholder="Write your study note...">'+esc(n.body)+'</textarea></div><button class="primary" onclick="saveNote('+(id||'null')+')">Save note</button></div>';document.getElementById('modal').classList.remove('hidden')}
+function closeModal(){document.getElementById('modal').classList.add('hidden')}
+function saveNote(id){let title=document.getElementById('nt').value.trim(),subject=document.getElementById('ns').value.trim()||'General',body=document.getElementById('nb').value.trim();if(!title||!body){toast('Title and note are required');return}if(id){Object.assign(state.notes.find(n=>n.id===id),{title,subject,body})}else state.notes.push({id:Date.now(),title,subject,body,created:Date.now()});save();closeModal();render('notes');toast('Note saved')}
+function removeNote(id){if(confirm('Delete this note?')){state.notes=state.notes.filter(n=>n.id!==id);save();render('notes');toast('Note deleted')}}
+function filterNotes(){let q=document.getElementById('search').value.toLowerCase();document.getElementById('noteList').innerHTML=state.notes.filter(n=>(n.title+' '+n.subject+' '+n.body).toLowerCase().includes(q)).map(noteCard).join('')||'<div class="card empty">No matching notes.</div>'}
+function showSubject(s){document.getElementById('main').innerHTML='<div class="top"><div><h1>'+esc(s)+'</h1><p class="muted">Notes in this subject.</p></div><button class="ghost" onclick="render(\'subjects\')">← Subjects</button></div><div class="notes">'+state.notes.filter(n=>n.subject===s).map(noteCard).join('')+'</div>'}
+document.querySelectorAll('.nav button').forEach(b=>b.onclick=()=>render(b.dataset.view));render();
+</script>
+</body></html>
