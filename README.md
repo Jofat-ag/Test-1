@@ -14,4 +14,4 @@ A lightweight educational notebook web app.
 Open `index.html` in a browser, or serve the folder with any static web server.
 
 ## Deployment
-This repository is prepared as a static site. No deployment/hosting configuration has been activated yet.
+GitHub Pages deployment is configured through GitHub Actions.
